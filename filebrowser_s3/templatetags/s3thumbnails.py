@@ -10,7 +10,7 @@ from django.core.files.storage import default_storage
 from django.conf import settings
 from django import template
 
-register = template.Library(
+register = template.Library()
 
 
 # This templatetag is a modified version of:
@@ -38,7 +38,7 @@ def thumbnail(image_url, width, height, upscale=True, quality=95, left=.5,
         image_url = image_url.replace(settings.MEDIA_URL, "", 1)
     image_dir, image_name = os.path.split(image_url)
     image_prefix, image_ext = os.path.splitext(image_name)
-    filetype = {".png": "PNG", ".gif": "GIF"}.get(image_ext, "JPEG")
+    filetype = {".png": "PNG", ".gif": "GIF"}.get(image_ext.lower(), "JPEG")
     thumb_name = "%s-%sx%s" % (image_prefix, width, height)
     if not upscale:
         thumb_name += "-no-upscale"
@@ -155,7 +155,8 @@ def thumbnail(image_url, width, height, upscale=True, quality=95, left=.5,
         to_width = from_width * to_height // from_height
     elif to_height == 0:
         to_height = from_height * to_width // from_width
-    if image.mode not in ("P", "L", "RGBA"):
+    original_image_mode = image.mode
+    if original_image_mode not in ("P", "L", "RGBA"):
         try:
             image = image.convert("RGBA")
         except:
@@ -187,6 +188,8 @@ def thumbnail(image_url, width, height, upscale=True, quality=95, left=.5,
     to_size = (to_width, to_height)
     to_pos = (left, top)
     try:
+        if original_image_mode != image.mode:
+            image = image.convert(original_image_mode)
         image = ImageOps.fit(image, to_size, Image.ANTIALIAS, 0, to_pos)
         image = image.save(thumb_path, filetype, quality=quality, **image_info)
         # Push a remote copy of the thumbnail if MEDIA_URL is
